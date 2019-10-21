@@ -5,7 +5,9 @@ import sys
 
 sys.path.insert(0, "..")
 
-with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")) as f:
+with open(
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), ".config.json")
+) as f:
     config = json.load(f)
     accounts = config["accounts"]
     creds = config["credentials"]
