@@ -1,5 +1,6 @@
-from instagram_api.exceptions.instagram_exception import InstagramException
 from requests.exceptions import HTTPError
+
+from instagram.exceptions.instagram_exception import InstagramException
 
 
 class InternetException(InstagramException):

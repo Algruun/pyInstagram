@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from typing import Union
 
-from instagram_api.entities.account import Account
-from instagram_api.entities.element import Element
-from instagram_api.entities.media import Media
+from instagram.entities.account import Account
+from instagram.entities.element import Element
+from instagram.entities.media import Media
 
 
 class Comment(Element):

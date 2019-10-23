@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from typing import Union, Set, Dict, Any, Optional, List
 
-from instagram_api.entities.account import Account
-from instagram_api.entities.updatable_element import UpdatableElement
+from instagram.entities.account import Account
+from instagram.entities.updatable_element import UpdatableElement
 
 
 class Media(UpdatableElement):
@@ -17,7 +17,7 @@ class Media(UpdatableElement):
         self.caption = None
         self.owner: Optional[Account] = None
         self.date = None
-        from instagram_api.entities.location import Location
+        from instagram.entities.location import Location
 
         self.location: Optional[Location] = None
         self.likes_count = None
@@ -32,7 +32,7 @@ class Media(UpdatableElement):
 
         self.album: Set[Media] = set()
         self.likes: Set[Account] = set()
-        from instagram_api.entities.comment import Comment
+        from instagram.entities.comment import Comment
 
         self.comments: Set[Comment] = set()
 

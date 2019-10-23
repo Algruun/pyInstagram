@@ -1,4 +1,4 @@
-from instagram_api.exceptions.auth_exception import AuthException
+from instagram.exceptions.auth_exception import AuthException
 
 
 class CheckpointException(AuthException):

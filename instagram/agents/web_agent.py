@@ -2,39 +2,46 @@ import hashlib
 import json
 import re
 from time import sleep
-from typing import Optional, List, Tuple, Dict
+from typing import Optional, List, Tuple, Dict, Any, Callable
 
-import requests
-from instagram_api.entities.account import Account
-from instagram_api.entities.comment import Comment
-from instagram_api.entities.has_media_element import HasMediaElement
-from instagram_api.entities.media import Media
-from instagram_api.entities.tag import Tag
-from instagram_api.entities.updatable_element import UpdatableElement
-from instagram_api.exceptions.exception_manager import ExceptionManager
-from instagram_api.exceptions.internet_exception import InternetException
-from instagram_api.exceptions.unexpected_response import UnexpectedResponse
 from loguru import logger
-from requests import Response
+from requests import Response, Session, RequestException
+from requests.cookies import cookiejar_from_dict
+
+from instagram.entities import (
+    Account,
+    Comment,
+    HasMediaElement,
+    UpdatableElement,
+    Media,
+    Tag,
+)
+from instagram.exceptions import ExceptionManager, UnexpectedResponse, InternetException
 
 exception_manager = ExceptionManager()
 
 
 class WebAgent:
-    def __init__(self, cookies: dict = None, proxies: Dict[str, str] = None):
+    def __init__(
+        self,
+        cookies: Dict[str, Any] = None,
+        proxies: Dict[str, str] = None,
+        json_deserializer: Callable[[Any], Dict[Any, Any]] = json.loads,
+    ):
         # super(WebAgent, self).__init__(cookies)
         self.rhx_gis = None
         self.csrf_token = None
-        self.session = requests.Session()
+        self.session = Session()
+        self.deserializer = json_deserializer
         if cookies:
-            self.session.cookies = requests.cookies.cookiejar_from_dict(cookies)
+            self.session.cookies = cookiejar_from_dict(cookies)
         if proxies:
             self.session.proxies.update(proxies)
 
     @exception_manager.decorator
     def update(
-        self, obj: UpdatableElement = None, settings: dict = None
-    ) -> Optional[dict]:
+        self, obj: UpdatableElement = None, settings: Dict[str, Any] = None
+    ) -> Optional[Dict[str, Any]]:
         logger.info(f"Update '{'self' if not obj else obj}' started")
         settings = dict() if not settings else settings.copy()
 
@@ -49,7 +56,7 @@ class WebAgent:
                 r"<script[^>]*>\s*window._sharedData\s*=\s*((?!<script>).*)\s*;\s*</script>",
                 response.text,
             )
-            data = json.loads(match.group(1))
+            data = self.deserializer(match.group(1))
             self.rhx_gis = data.get("rhx_gis", "")
             self.csrf_token = data.get("config").get("csrf_token")
 
@@ -77,7 +84,7 @@ class WebAgent:
         count: int = 12,
         limit: int = 50,
         delay: int = 0,
-        settings: dict = None,
+        settings: Dict[str, Any] = None,
     ) -> Tuple[List[Media], str, bool]:
         logger.info(f"Get media '{obj}' started")
 
@@ -91,26 +98,8 @@ class WebAgent:
                 data = self.update(obj, settings=settings)
                 data = data.get(obj.media_path[-1])
 
-                page_info: dict = data.get("page_info")
-                edges: dict = data.get("edges")
-
-                for index in range(min(len(edges), count)):
-                    node = edges[index].get("node")
-                    m = Media(node.get("shortcode"))
-                    m.set_data(node)
-                    if isinstance(obj, Account):
-                        m.likes_count = node.get("edge_media_preview_like").get("count")
-                        m.owner = obj
-                    else:
-                        m.likes_count = node.get("edge_liked_by")
-
-                    obj.media.add(m)
-                    medias.append(m)
-
-                pointer = (
-                    page_info.get("end_cursor")
-                    if page_info.get("has_next_page")
-                    else None
+                edges, page_info, pointer = self.proceed_media_elements(
+                    data=data, count=count, obj=obj, medias=medias
                 )
 
                 if len(edges) < count and page_info.get("has_next_page"):
@@ -149,28 +138,13 @@ class WebAgent:
             data = response.json().get("data")
             for key in obj.media_path:
                 data = data.get(key)
-            page_info: dict = data.get("page_info")
-            edges: dict = data.get("edges")
 
-            for index in range(min(len(edges), count)):
-                node = edges[index].get("node")
-                m = Media(node.get("shortcode"))
-                m.set_data(node)
-                if isinstance(obj, Account):
-                    m.likes_count = node.get("edge_media_preview_like").get("count")
-                    m.owner = obj
-                else:
-                    m.likes_count = node.get("edge_liked_by")
-                obj.media.add(m)
-                medias.append(m)
-
-            pointer = (
-                page_info.get("end_cursor") if page_info.get("has_next_page") else None
+            edges, page_info, pointer = self.proceed_media_elements(
+                data=data, count=count, obj=obj, medias=medias
             )
-
             if len(edges) < count and page_info.get("has_next_page"):
                 count = count - len(edges)
-                # sleep(delay)
+                sleep(delay)
                 return medias, pointer, False
             else:
                 logger.info(f"Get media '{obj}' was successful")
@@ -187,7 +161,7 @@ class WebAgent:
         count: int = 20,
         limit: int = 50,
         delay: int = 0,
-        settings: dict = None,
+        settings: Dict[str, Any] = None,
     ) -> Tuple[List[Account], str, bool]:
         logger.info(f"Get likes '{media}' started")
 
@@ -242,7 +216,7 @@ class WebAgent:
                 variables_string = (
                     '{{"shortcode":"{shortcode}","first":{first},"after":"{after}"}}'
                 )
-                # sleep(delay)
+                sleep(delay)
                 return likes, pointer, False
             else:
                 logger.info(f"Get likes '{media}' was successful")
@@ -259,7 +233,7 @@ class WebAgent:
         count: int = 35,
         limit: int = 32,
         delay: int = 0,
-        settings: dict = None,
+        settings: Dict[str, Any] = None,
     ) -> Tuple[List[Comment], str]:
         logger.info(f"Get comments '{media}' started")
 
@@ -272,27 +246,10 @@ class WebAgent:
                     data = data.get("edge_media_to_comment")
                 else:
                     data = data.get("edge_media_to_parent_comment")
-                edges = data.get("edges")
-                page_info = data.get("page_info")
 
-                for index in range(min(len(edges), count)):
-                    node = edges[index].get("node")
-                    c = Comment(
-                        node.get("id"),
-                        media=media,
-                        owner=Account(node.get("owner").get("username")),
-                        text=node.get("text"),
-                        created_at=node.get("created_at"),
-                    )
-                    media.comments.add(c)
-                    comments.append(c)
-
-                pointer = (
-                    page_info.get("end_cursor")
-                    if page_info.get("has_next_page")
-                    else None
+                edges, page_info, pointer = self.proceed_comments(
+                    data=data, count=count, comments=comments, media=media
                 )
-
                 if len(edges) < count and pointer:
                     count = count - len(edges)
                 else:
@@ -324,25 +281,8 @@ class WebAgent:
                     .get("edge_media_to_comment")
                 )
                 media.comments_count = data.get("count")
-                edges = data.get("edges")
-                page_info = data.get("page_info")
-
-                for index in range(min(len(edges), count)):
-                    node = edges[index].get("node")
-                    c = Comment(
-                        node.get("id"),
-                        media=media,
-                        owner=Account(node.get("owner").get("username")),
-                        text=node.get("text"),
-                        created_at=node.get("created_at"),
-                    )
-                    media.comments.add(c)
-                    comments.append(c)
-
-                pointer = (
-                    page_info.get("end_cursor")
-                    if page_info.get("has_next_page")
-                    else None
+                edges, page_info, pointer = self.proceed_comments(
+                    data=data, count=count, comments=comments, media=media
                 )
 
                 if len(edges) < count and page_info.get("has_next_page"):
@@ -383,7 +323,11 @@ class WebAgent:
         return self.get_request("https://www.instagram.com/graphql/query/", **settings)
 
     def action_request(
-        self, referer: str, url: str, data: dict = None, settings: dict = None
+        self,
+        referer: str,
+        url: str,
+        data: Dict[str, Any] = None,
+        settings: Dict[str, Any] = None,
     ) -> Response:
         data = dict() if not data else data.copy()
         settings = dict() if not settings else settings.copy()
@@ -410,10 +354,7 @@ class WebAgent:
             response = self.session.get(*args, **kwargs)
             response.raise_for_status()
             return response
-        except (
-            requests.exceptions.RequestException,
-            ConnectionResetError,
-        ) as exception:
+        except (RequestException, ConnectionResetError) as exception:
             raise InternetException(exception)
 
     def post_request(self, *args, **kwargs) -> Response:
@@ -421,8 +362,54 @@ class WebAgent:
             response = self.session.post(*args, **kwargs)
             response.raise_for_status()
             return response
-        except (
-            requests.exceptions.RequestException,
-            ConnectionResetError,
-        ) as exception:
+        except (RequestException, ConnectionResetError) as exception:
             raise InternetException(exception)
+
+    @staticmethod
+    def proceed_media_elements(
+        data: Dict[str, Any], count: int, obj: HasMediaElement, medias: List[Media]
+    ) -> Tuple[Dict[Any, Any], Dict[Any, Any], Optional[str]]:
+        page_info: Dict[str, Any] = data.get("page_info")
+        edges: Dict[Any, Any] = data.get("edges")
+
+        for index in range(min(len(edges), count)):
+            node = edges[index].get("node")
+            m = Media(node.get("shortcode"))
+            m.set_data(node)
+            if isinstance(obj, Account):
+                m.likes_count = node.get("edge_media_preview_like").get("count")
+                m.owner = obj
+            else:
+                m.likes_count = node.get("edge_liked_by")
+
+            obj.media.add(m)
+            medias.append(m)
+
+        pointer = (
+            page_info.get("end_cursor") if page_info.get("has_next_page") else None
+        )
+        return edges, page_info, pointer
+
+    @staticmethod
+    def proceed_comments(
+        data: Dict[str, Any], count: int, comments: List[Comment], media: Media
+    ) -> Tuple[Dict[Any, Any], Dict[Any, Any], Optional[str]]:
+        edges = data.get("edges")
+        page_info = data.get("page_info")
+
+        for index in range(min(len(edges), count)):
+            node = edges[index].get("node")
+            c = Comment(
+                node.get("id"),
+                media=media,
+                owner=Account(node.get("owner").get("username")),
+                text=node.get("text"),
+                created_at=node.get("created_at"),
+            )
+            media.comments.add(c)
+            comments.append(c)
+
+        pointer = (
+            page_info.get("end_cursor") if page_info.get("has_next_page") else None
+        )
+        return edges, page_info, pointer

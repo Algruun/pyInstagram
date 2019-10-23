@@ -2,11 +2,11 @@ from random import choice, randint, random
 from time import sleep
 
 import pytest
-from instagram_api.entities.account import Account
-from instagram_api.entities.location import Location
-from instagram_api.entities.media import Media
-from instagram_api.entities.tag import Tag
 
+from instagram.entities.account import Account
+from instagram.entities.location import Location
+from instagram.entities.media import Media
+from instagram.entities.tag import Tag
 from tests.settings import accounts, anon, locations, photos, photo_sets, tags, videos
 
 

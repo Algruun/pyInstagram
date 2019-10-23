@@ -1,4 +1,4 @@
-from instagram_api.exceptions.instagram_exception import InstagramException
+from instagram.exceptions.instagram_exception import InstagramException
 
 
 class UnexpectedResponse(InstagramException):

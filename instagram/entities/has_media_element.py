@@ -1,4 +1,4 @@
-from instagram_api.entities.updatable_element import UpdatableElement
+from instagram.entities.updatable_element import UpdatableElement
 
 
 class HasMediaElement(UpdatableElement):

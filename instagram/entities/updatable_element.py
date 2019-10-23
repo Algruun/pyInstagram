@@ -1,4 +1,4 @@
-from instagram_api.entities.element import Element
+from instagram.entities.element import Element
 
 
 class UpdatableElement(Element):

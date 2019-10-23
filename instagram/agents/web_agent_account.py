@@ -1,21 +1,26 @@
 import json
 import re
 from time import sleep
-from typing import List, Tuple, Union, Optional, Dict
+from typing import List, Tuple, Union, Optional, Dict, Any
 
-from instagram_api.agents.web_agent import WebAgent
-from instagram_api.entities.account import Account
-from instagram_api.entities.comment import Comment
-from instagram_api.entities.has_media_element import HasMediaElement
-from instagram_api.entities.media import Media
-from instagram_api.entities.story import Story
-from instagram_api.entities.updatable_element import UpdatableElement
-from instagram_api.exceptions.auth_exception import AuthException
-from instagram_api.exceptions.checpoint_exception import CheckpointException
-from instagram_api.exceptions.exception_manager import ExceptionManager
-from instagram_api.exceptions.internet_exception import InternetException
-from instagram_api.exceptions.unexpected_response import UnexpectedResponse
 from loguru import logger
+
+from instagram import WebAgent
+from instagram.entities import (
+    Account,
+    UpdatableElement,
+    HasMediaElement,
+    Media,
+    Story,
+    Comment,
+)
+from instagram.exceptions import (
+    ExceptionManager,
+    InternetException,
+    AuthException,
+    CheckpointException,
+    UnexpectedResponse,
+)
 
 exception_manager = ExceptionManager()
 
@@ -31,7 +36,7 @@ class WebAgentAccount(Account, WebAgent):
         WebAgent.__init__(self, cookies=cookies, proxies=proxies)
 
     @exception_manager.decorator
-    def auth(self, password: str, settings: dict = None):
+    def auth(self, password: str, settings: Dict[str, Any] = None):
         logger.info("Auth started")
         settings = dict() if not settings else settings.copy()
 
@@ -77,7 +82,9 @@ class WebAgentAccount(Account, WebAgent):
         logger.info("Auth was successful")
 
     @exception_manager.decorator
-    def checkpoint_handle(self, url: str, settings: dict = None) -> dict:
+    def checkpoint_handle(
+        self, url: str, settings: Dict[str, Any] = None
+    ) -> Dict[str, Any]:
         logger.info(f"Handle checkpoint page for '{self.username}' started")
         response = self.get_request(url, **settings)
         try:
@@ -119,8 +126,12 @@ class WebAgentAccount(Account, WebAgent):
 
     @exception_manager.decorator
     def checkpoint_send(
-        self, checkpoint_url: str, forward_url: str, choice, settings: dict = None
-    ) -> dict:
+        self,
+        checkpoint_url: str,
+        forward_url: str,
+        choice,
+        settings: Dict[str, Any] = None,
+    ) -> Dict[str, Any]:
         logger.info(f"Send verify code for '{self.username}' started")
         response = self.action_request(
             referer=checkpoint_url,
@@ -144,8 +155,8 @@ class WebAgentAccount(Account, WebAgent):
 
     @exception_manager.decorator
     def checkpoint_replay(
-        self, forward_url: str, replay_url: str, settings: dict = None
-    ) -> dict:
+        self, forward_url: str, replay_url: str, settings: Dict[str, Any] = None
+    ) -> Dict[str, Any]:
         logger.info(f"Resend verify code for '{self.username}' started")
         response = self.action_request(
             url=replay_url, referer=forward_url, settings=settings
@@ -164,7 +175,7 @@ class WebAgentAccount(Account, WebAgent):
             raise UnexpectedResponse(exception, response.url)
 
     @exception_manager.decorator
-    def checkpoint(self, url: str, code, settings: dict = None) -> bool:
+    def checkpoint(self, url: str, code, settings: Dict[str, Any] = None) -> bool:
         logger.info(f"Verify account '{self.username}' started")
         response = self.action_request(
             referer=url, url=url, data={"security_code": code}, settings=settings
@@ -181,7 +192,7 @@ class WebAgentAccount(Account, WebAgent):
             raise UnexpectedResponse(exception, response.url)
 
     @exception_manager.decorator
-    def update(self, obj: UpdatableElement = None, settings: dict = None):
+    def update(self, obj: UpdatableElement = None, settings: Dict[str, Any] = None):
         if not obj:
             obj = self
         return WebAgent.update(self, obj, settings=settings)
@@ -194,7 +205,7 @@ class WebAgentAccount(Account, WebAgent):
         count: int = 12,
         limit: int = 12,
         delay: int = 0,
-        settings: dict = None,
+        settings: Dict[str, Any] = None,
     ) -> Tuple[List[Media], str, bool]:
         if not obj:
             obj = self
@@ -216,7 +227,7 @@ class WebAgentAccount(Account, WebAgent):
         count: int = 20,
         limit: int = 50,
         delay: int = 0,
-        settings: dict = None,
+        settings: Dict[str, Any] = None,
     ) -> Tuple[List[Account], str, bool]:
         if not account:
             account = self
@@ -284,7 +295,7 @@ class WebAgentAccount(Account, WebAgent):
         count: int = 20,
         limit: int = 50,
         delay: int = 0,
-        settings: dict = None,
+        settings: Dict[str, Any] = None,
     ) -> Tuple[List[Account], str, bool]:
         if not account:
             account = self
@@ -347,7 +358,7 @@ class WebAgentAccount(Account, WebAgent):
             raise UnexpectedResponse(exception, response.url)
 
     @exception_manager.decorator
-    def stories(self, settings: dict = None) -> list:
+    def stories(self, settings: Dict[str, Any] = None) -> List[Story]:
         logger.info("Get stories started")
         response = self.graphql_request(
             query_hash="60b755363b5c230111347a7a4e242001",
@@ -378,7 +389,7 @@ class WebAgentAccount(Account, WebAgent):
         count: int = 12,
         limit: int = 50,
         delay: Union[int, float] = 0,
-        settings: dict = None,
+        settings: Dict[str, Any] = None,
     ) -> Tuple[List[Media], str]:
         logger.info("Get feed started")
 
@@ -436,7 +447,7 @@ class WebAgentAccount(Account, WebAgent):
                 raise UnexpectedResponse(exception, response.url)
 
     @exception_manager.decorator
-    def like(self, media: Media, settings: dict = None) -> bool:
+    def like(self, media: Media, settings: Dict[str, Any] = None) -> bool:
         logger.info(f"Like '{media}' started")
         if not isinstance(media, Media):
             raise TypeError("'media' must be Media type")
@@ -458,7 +469,7 @@ class WebAgentAccount(Account, WebAgent):
             raise UnexpectedResponse(exception, response.url)
 
     @exception_manager.decorator
-    def unlike(self, media: Media, settings: dict = None) -> bool:
+    def unlike(self, media: Media, settings: Dict[str, Any] = None) -> bool:
         logger.info(f"Unlike '{media}' started")
         if not isinstance(media, Media):
             raise TypeError("'media' must be Media type")
@@ -481,7 +492,7 @@ class WebAgentAccount(Account, WebAgent):
             raise UnexpectedResponse(exception, response.url)
 
     @exception_manager.decorator
-    def save(self, media: Media, settings: dict = None) -> bool:
+    def save(self, media: Media, settings: Dict[str, Any] = None) -> bool:
         logger.info(f"Save '{media}' started")
 
         if not media.id:
@@ -501,7 +512,7 @@ class WebAgentAccount(Account, WebAgent):
             raise UnexpectedResponse(exception, response.url)
 
     @exception_manager.decorator
-    def unsave(self, media: Media, settings: dict = None) -> bool:
+    def unsave(self, media: Media, settings: Dict[str, Any] = None) -> bool:
         logger.info(f"Unsave '{media}' started")
 
         if not media.id:
@@ -523,7 +534,7 @@ class WebAgentAccount(Account, WebAgent):
 
     @exception_manager.decorator
     def add_comment(
-        self, media: Media, text: str, settings: dict = None
+        self, media: Media, text: str, settings: Dict[str, Any] = None
     ) -> Optional[Comment]:
         logger.info(f"Comment '{media}' started")
 
@@ -556,7 +567,7 @@ class WebAgentAccount(Account, WebAgent):
             raise UnexpectedResponse(exception, response.url)
 
     @exception_manager.decorator
-    def delete_comment(self, comment: Comment, settings: dict = None) -> bool:
+    def delete_comment(self, comment: Comment, settings: Dict[str, Any] = None) -> bool:
         logger.info(f"Delete comment '{comment}' started")
 
         if not comment.media.id:
@@ -582,7 +593,7 @@ class WebAgentAccount(Account, WebAgent):
             raise UnexpectedResponse(exception, response.url)
 
     @exception_manager.decorator
-    def follow(self, account: Account, settings: dict = None) -> bool:
+    def follow(self, account: Account, settings: Dict[str, Any] = None) -> bool:
         logger.info(f"Follow to '{account}' started", account)
 
         if not account.id:
@@ -603,7 +614,7 @@ class WebAgentAccount(Account, WebAgent):
             raise UnexpectedResponse(exception, response.url)
 
     @exception_manager.decorator
-    def unfollow(self, account: Account, settings: dict = None) -> bool:
+    def unfollow(self, account: Account, settings: Dict[str, Any] = None) -> bool:
         logger.info(f"Unfollow to '{account}' started")
 
         if not account.id:

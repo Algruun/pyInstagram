@@ -1,9 +1,9 @@
 import asyncio
 
 import pytest
-from instagram_api.agents.web_agent import WebAgent
-from instagram_api.agents.web_agent_account import WebAgentAccount
 
+from instagram.agents.web_agent import WebAgent
+from instagram.agents.web_agent_account import WebAgentAccount
 from tests.settings import creds
 
 

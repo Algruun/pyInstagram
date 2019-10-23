@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Union
 
-from instagram_api.entities.element import Element
+from instagram.entities.element import Element
 
 
 class Story(Element):

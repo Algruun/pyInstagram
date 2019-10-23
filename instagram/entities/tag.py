@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from typing import Union, Set, Optional, Dict, Any
 
-from instagram_api.entities.has_media_element import HasMediaElement
-from instagram_api.entities.media import Media
+from instagram.entities.has_media_element import HasMediaElement
+from instagram.entities.media import Media
 
 
 class Tag(HasMediaElement):

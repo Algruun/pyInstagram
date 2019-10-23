@@ -2,12 +2,13 @@ from random import randint, choice
 from string import ascii_uppercase, ascii_lowercase, digits
 
 import pytest
-from instagram_api.entities.account import Account
-from instagram_api.entities.comment import Comment
-from instagram_api.entities.location import Location
-from instagram_api.entities.media import Media
-from instagram_api.entities.story import Story
-from instagram_api.entities.tag import Tag
+
+from instagram.entities.account import Account
+from instagram.entities.comment import Comment
+from instagram.entities.location import Location
+from instagram.entities.media import Media
+from instagram.entities.story import Story
+from instagram.entities.tag import Tag
 
 
 def setup_function():

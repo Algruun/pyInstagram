@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Union, Set, Dict, Optional, Any
 
-from instagram_api.entities.has_media_element import HasMediaElement
+from instagram.entities.has_media_element import HasMediaElement
 
 
 class Account(HasMediaElement):
@@ -28,7 +28,7 @@ class Account(HasMediaElement):
         self.is_verified: Optional[bool] = None
         self.country_block: Optional[bool] = None
 
-        from instagram_api.entities.media import Media
+        from instagram.entities.media import Media
 
         self.media: Set[Media] = set()
         self.follows: Set[Account] = set()
